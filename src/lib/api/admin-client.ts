@@ -93,10 +93,107 @@ class AdminApiClient {
     return this.request<HealthStatus>("/health/");
   }
 
-  // Staff Identity
+  // Staff Identity & Auth
+  async login(payload: import("@/types/admin").StaffLoginPayload): Promise<import("@/types/admin").StaffAuthResponse> {
+    return this.request<import("@/types/admin").StaffAuthResponse>("/admin/auth/login/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async refresh(refreshToken: string): Promise<import("@/types/admin").TokenRefreshResponse> {
+    return this.request<import("@/types/admin").TokenRefreshResponse>("/admin/auth/refresh/", {
+      method: "POST",
+      body: JSON.stringify({ refresh: refreshToken }),
+    });
+  }
+
+  async logout(refreshToken?: string): Promise<{ status: string }> {
+    return this.request<{ status: string }>("/admin/auth/logout/", {
+      method: "POST",
+      body: JSON.stringify({ refresh: refreshToken || "" }),
+    });
+  }
+
   async getMe(): Promise<StaffUser> {
     return this.request<StaffUser>("/admin/auth/me/");
+  }
+
+  // Categories Operations
+  async getCategories(): Promise<import("@/types/catalog").Category[]> {
+    return this.request<import("@/types/catalog").Category[]>("/admin/categories/");
+  }
+
+  async getCategory(id: number | string): Promise<import("@/types/catalog").Category> {
+    return this.request<import("@/types/catalog").Category>(`/admin/categories/${id}/`);
+  }
+
+  async createCategory(data: import("@/types/catalog").CategoryInput): Promise<import("@/types/catalog").Category> {
+    return this.request<import("@/types/catalog").Category>("/admin/categories/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCategory(
+    id: number | string,
+    data: Partial<import("@/types/catalog").CategoryInput>
+  ): Promise<import("@/types/catalog").Category> {
+    return this.request<import("@/types/catalog").Category>(`/admin/categories/${id}/`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteCategory(id: number | string): Promise<void> {
+    await this.request<void>(`/admin/categories/${id}/`, {
+      method: "DELETE",
+    });
+  }
+
+  // Products Operations
+  async getProducts(
+    params?: import("@/types/catalog").ProductFilterParams
+  ): Promise<import("@/types/catalog").PaginatedProducts> {
+    const searchParams = new URLSearchParams();
+    if (params?.category_id) searchParams.set("category_id", params.category_id.toString());
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.search) searchParams.set("search", params.search);
+    if (params?.page) searchParams.set("page", params.page.toString());
+    if (params?.page_size) searchParams.set("page_size", params.page_size.toString());
+
+    const qs = searchParams.toString();
+    const endpoint = qs ? `/admin/products/?${qs}` : "/admin/products/";
+    return this.request<import("@/types/catalog").PaginatedProducts>(endpoint);
+  }
+
+  async getProduct(id: number | string): Promise<import("@/types/catalog").ProductDetail> {
+    return this.request<import("@/types/catalog").ProductDetail>(`/admin/products/${id}/`);
+  }
+
+  async createProduct(data: import("@/types/catalog").ProductInput): Promise<import("@/types/catalog").ProductDetail> {
+    return this.request<import("@/types/catalog").ProductDetail>("/admin/products/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateProduct(
+    id: number | string,
+    data: Partial<import("@/types/catalog").ProductInput>
+  ): Promise<import("@/types/catalog").ProductDetail> {
+    return this.request<import("@/types/catalog").ProductDetail>(`/admin/products/${id}/`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteProduct(id: number | string): Promise<void> {
+    await this.request<void>(`/admin/products/${id}/`, {
+      method: "DELETE",
+    });
   }
 }
 
 export const adminApi = new AdminApiClient();
+

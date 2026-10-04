@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "@/styles/globals.css";
+import { CMSAuthProvider } from "@/lib/auth/auth-context";
 import { PermissionsProvider } from "@/lib/auth/permissions";
 import { AdminShell } from "@/components/layout/AdminShell";
 
@@ -20,9 +21,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <PermissionsProvider>
-          <AdminShell>{children}</AdminShell>
-        </PermissionsProvider>
+        <CMSAuthProvider>
+          <PermissionsProvider>
+            <AdminShell>{children}</AdminShell>
+          </PermissionsProvider>
+        </CMSAuthProvider>
       </body>
     </html>
   );

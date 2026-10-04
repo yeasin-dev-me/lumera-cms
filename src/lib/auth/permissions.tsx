@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext } from "react";
+import { useCMSAuth } from "./auth-context";
 import { StaffUser } from "@/types/admin";
 
 interface PermissionsContextValue {
@@ -8,40 +9,33 @@ interface PermissionsContextValue {
   permissions: string[];
   hasPermission: (permissionCode: string) => boolean;
   hasAnyPermission: (codes: string[]) => boolean;
-  setUser: (user: StaffUser | null) => void;
 }
 
 const PermissionsContext = createContext<PermissionsContextValue>({
   user: null,
   permissions: [],
-  hasPermission: () => true, // default optimistic in foundation until authenticated
-  hasAnyPermission: () => true,
-  setUser: () => {},
+  hasPermission: () => false,
+  hasAnyPermission: () => false,
 });
 
 export const PermissionsProvider: React.FC<{
   children: React.ReactNode;
-  initialUser?: StaffUser | null;
-}> = ({ children, initialUser = null }) => {
-  const [user, setUser] = useState<StaffUser | null>(initialUser);
-
-  const permissions = user?.permissions || [];
+}> = ({ children }) => {
+  const { staffUser, permissions, hasPermission: checkPerm } = useCMSAuth();
 
   const hasPermission = (code: string): boolean => {
-    if (!user) return true; // Foundation mode allows viewing placeholder UI shells
-    if (permissions.includes("*")) return true;
-    return permissions.includes(code);
+    return checkPerm(code);
   };
 
   const hasAnyPermission = (codes: string[]): boolean => {
-    if (!user) return true;
+    if (!staffUser) return false;
     if (permissions.includes("*")) return true;
     return codes.some((code) => permissions.includes(code));
   };
 
   return (
     <PermissionsContext.Provider
-      value={{ user, permissions, hasPermission, hasAnyPermission, setUser }}
+      value={{ user: staffUser, permissions, hasPermission, hasAnyPermission }}
     >
       {children}
     </PermissionsContext.Provider>
@@ -53,6 +47,7 @@ export const usePermissions = () => useContext(PermissionsContext);
 /**
  * Declarative component for permission-aware UI gating.
  * Renders children only when current staff user possesses the required permission.
+ * NOTE: This is a UI-level guard and does NOT replace backend authorization.
  */
 export const Can: React.FC<{
   permission: string;

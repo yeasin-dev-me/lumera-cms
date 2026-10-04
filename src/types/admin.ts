@@ -24,3 +24,19 @@ export interface DashboardMetricSummary {
   revenueSnapshot: string;
   health: "ok" | "degraded" | "unavailable";
 }
+
+export interface StaffLoginPayload {
+  email: string;
+  password: string;
+}
+
+export interface StaffAuthResponse {
+  access: string;
+  refresh: string;
+  user: StaffUser;
+}
+
+export interface TokenRefreshResponse {
+  access: string;
+  refresh?: string;
+}
