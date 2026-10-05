@@ -193,6 +193,23 @@ class AdminApiClient {
       method: "DELETE",
     });
   }
+
+  // Orders module (ADR-0013)
+  async getOrders(params?: import("@/types/orders").AdminOrderListParams): Promise<import("@/types/orders").PaginatedAdminOrders> {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.set("page", params.page.toString());
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.payment_status) searchParams.set("payment_status", params.payment_status);
+    if (params?.search) searchParams.set("search", params.search);
+
+    const query = searchParams.toString();
+    const endpoint = query ? `/admin/orders/?${query}` : "/admin/orders/";
+    return this.request<import("@/types/orders").PaginatedAdminOrders>(endpoint);
+  }
+
+  async getOrder(publicId: string): Promise<import("@/types/orders").AdminOrderDetail> {
+    return this.request<import("@/types/orders").AdminOrderDetail>(`/admin/orders/${encodeURIComponent(publicId)}/`);
+  }
 }
 
 export const adminApi = new AdminApiClient();
