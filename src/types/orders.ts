@@ -26,6 +26,7 @@ export interface OrderItemDetail {
 export interface OrderStatusHistoryItem {
   from_status: string;
   to_status: string;
+  actor_type?: "system" | "staff" | "customer";
   reason: string;
   created_at: string;
 }
@@ -72,10 +73,29 @@ export interface AdminOrderDetail {
   customer_notes: string;
   items: OrderItemDetail[];
   status_history: OrderStatusHistoryItem[];
+  courier?: string | null;
+  tracking_number?: string | null;
+  tracking_url?: string | null;
+  shipped_at?: string | null;
+  delivered_at?: string | null;
   payment?: PaymentSummary | null;
   payment_attempts?: PaymentAttemptItem[];
   created_at: string;
   updated_at: string;
+}
+
+export interface OrderTransitionPayload {
+  to_status: OrderStatus;
+  reason?: string;
+  courier?: string;
+  tracking_number?: string;
+  tracking_url?: string;
+}
+
+export interface FulfillmentUpdatePayload {
+  courier?: string;
+  tracking_number?: string;
+  tracking_url?: string;
 }
 
 export interface PaymentSummary {

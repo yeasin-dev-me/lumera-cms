@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { adminApi, AdminApiError } from "@/lib/api/admin-client";
-import { AdminOrderDetail } from "@/types/orders";
+import { AdminOrderDetail, OrderStatus } from "@/types/orders";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -23,6 +23,11 @@ import {
   CreditCard,
   CheckCircle2,
   AlertCircle,
+  RotateCw,
+  ExternalLink,
+  Edit2,
+  XCircle,
+  Check,
 } from "lucide-react";
 
 export default function AdminOrderDetailPage() {
@@ -32,7 +37,22 @@ export default function AdminOrderDetailPage() {
 
   const [order, setOrder] = useState<AdminOrderDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  // Shipping Modal state
+  const [showShipModal, setShowShipModal] = useState<boolean>(false);
+  const [shipCourier, setShipCourier] = useState<string>("Steadfast");
+  const [shipTrackingNumber, setShipTrackingNumber] = useState<string>("");
+  const [shipTrackingUrl, setShipTrackingUrl] = useState<string>("");
+
+  // Edit Fulfillment state
+  const [isEditingFulfillment, setIsEditingFulfillment] = useState<boolean>(false);
+  const [editCourier, setEditCourier] = useState<string>("");
+  const [editTrackingNumber, setEditTrackingNumber] = useState<string>("");
+  const [editTrackingUrl, setEditTrackingUrl] = useState<string>("");
 
   useEffect(() => {
     if (!orderId) return;
@@ -45,6 +65,9 @@ export default function AdminOrderDetailPage() {
       .then((data) => {
         if (!isMounted) return;
         setOrder(data);
+        setEditCourier(data.courier || "");
+        setEditTrackingNumber(data.tracking_number || "");
+        setEditTrackingUrl(data.tracking_url || "");
       })
       .catch((err: unknown) => {
         if (!isMounted) return;
@@ -62,6 +85,70 @@ export default function AdminOrderDetailPage() {
       isMounted = false;
     };
   }, [orderId]);
+
+  const handleTransition = async (
+    toStatus: OrderStatus,
+    reason?: string,
+    courier?: string,
+    trackingNumber?: string,
+    trackingUrl?: string
+  ) => {
+    if (!order) return;
+    setActionLoading(true);
+    setActionError(null);
+    setActionSuccess(null);
+
+    try {
+      const updated = await adminApi.transitionOrder(order.public_id, {
+        to_status: toStatus,
+        reason: reason || `Transitioned to ${toStatus} by staff`,
+        courier,
+        tracking_number: trackingNumber,
+        tracking_url: trackingUrl,
+      });
+      setOrder(updated);
+      setEditCourier(updated.courier || "");
+      setEditTrackingNumber(updated.tracking_number || "");
+      setEditTrackingUrl(updated.tracking_url || "");
+      setShowShipModal(false);
+      setActionSuccess(`Order status successfully transitioned to "${toStatus}".`);
+    } catch (err: unknown) {
+      if (err instanceof AdminApiError) {
+        setActionError(err.message);
+      } else {
+        setActionError("Failed to transition order status.");
+      }
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUpdateFulfillment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!order) return;
+    setActionLoading(true);
+    setActionError(null);
+    setActionSuccess(null);
+
+    try {
+      const updated = await adminApi.updateOrderFulfillment(order.public_id, {
+        courier: editCourier,
+        tracking_number: editTrackingNumber,
+        tracking_url: editTrackingUrl,
+      });
+      setOrder(updated);
+      setIsEditingFulfillment(false);
+      setActionSuccess("Courier and tracking information updated.");
+    } catch (err: unknown) {
+      if (err instanceof AdminApiError) {
+        setActionError(err.message);
+      } else {
+        setActionError("Failed to update fulfillment details.");
+      }
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -87,9 +174,12 @@ export default function AdminOrderDetailPage() {
     );
   }
 
+  const isPaid = order.payment_status === "paid";
+  const isTerminal = order.status === "delivered" || order.status === "cancelled";
+
   return (
     <Can permission="orders.read" fallback={<p className="text-xs text-rose-500">Access denied.</p>}>
-      <div className="space-y-6 max-w-5xl">
+      <div className="space-y-6 max-w-5xl pb-12">
         <Link
           href="/orders"
           className="inline-flex items-center gap-1.5 text-xs text-lumera-primary hover:underline"
@@ -105,8 +195,16 @@ export default function AdminOrderDetailPage() {
               <h1 className="text-xl font-bold tracking-tight text-lumera-text">
                 Order #{order.order_number}
               </h1>
-              <Badge variant="primary">{order.status}</Badge>
-              <span className="text-xs bg-surface-muted px-2 py-0.5 rounded text-lumera-text">
+              <Badge variant={order.status === "cancelled" ? "danger" : "primary"}>
+                {order.status}
+              </Badge>
+              <span
+                className={`text-xs px-2.5 py-0.5 rounded font-medium ${
+                  isPaid
+                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                    : "bg-amber-50 text-amber-800 border border-amber-200"
+                }`}
+              >
                 Payment: {order.payment_status}
               </span>
             </div>
@@ -117,9 +215,236 @@ export default function AdminOrderDetailPage() {
           </div>
         </div>
 
+        {actionError && (
+          <Alert variant="danger" title="Operation Error">
+            {actionError}
+          </Alert>
+        )}
+
+        {actionSuccess && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded text-xs text-emerald-800 flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <span>{actionSuccess}</span>
+          </div>
+        )}
+
+        {/* Operational Fulfillment Actions Control Bar */}
+        <Can permission="orders.manage">
+          <Card className="p-5 bg-card border-border">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-lumera-text flex items-center gap-2">
+                  <Package className="h-4 w-4 text-lumera-primary" />
+                  <span>Fulfillment Operations Control Bar</span>
+                </h2>
+                <p className="text-xs text-lumera-text-muted mt-0.5">
+                  Authoritative status transitions enforcing legal lifecycle rules (ADR-0015).
+                </p>
+              </div>
+
+              {/* Contextual Action Buttons */}
+              <div className="flex flex-wrap items-center gap-2">
+                {order.status === "pending" && isPaid && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleTransition("confirmed", "Order confirmed by staff")}
+                    disabled={actionLoading}
+                  >
+                    Mark Confirmed
+                  </Button>
+                )}
+
+                {order.status === "confirmed" && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleTransition("processing", "Warehouse picking started")}
+                    disabled={actionLoading}
+                  >
+                    Start Processing
+                  </Button>
+                )}
+
+                {order.status === "processing" && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setShowShipModal(true)}
+                    disabled={actionLoading}
+                    className="gap-1.5"
+                  >
+                    <Truck className="h-3.5 w-3.5" />
+                    <span>Ship Order...</span>
+                  </Button>
+                )}
+
+                {order.status === "shipped" && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleTransition("delivered", "Delivery confirmed by staff")}
+                    disabled={actionLoading}
+                    className="gap-1.5"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>Mark Delivered</span>
+                  </Button>
+                )}
+
+                {!isTerminal && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      if (window.confirm("Cancel this order? This will restore stock without auto-refunding.")) {
+                        handleTransition("cancelled", "Order cancelled by administrator");
+                      }
+                    }}
+                    disabled={actionLoading}
+                    className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
+                  >
+                    Cancel Order
+                  </Button>
+                )}
+
+                {isTerminal && (
+                  <span className="text-xs text-lumera-text-muted font-medium italic">
+                    Terminal State (No further lifecycle mutations permitted)
+                  </span>
+                )}
+              </div>
+            </div>
+          </Card>
+        </Can>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Main Column: Items & Totals */}
+          {/* Main Column */}
           <div className="lg:col-span-8 space-y-6">
+            {/* Courier & Tracking Card */}
+            <Card className="p-5 bg-card border-border">
+              <div className="flex items-center justify-between pb-3 border-b border-border">
+                <h2 className="text-sm font-semibold text-lumera-text flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-lumera-primary" />
+                  <span>Courier & Tracking Metadata</span>
+                </h2>
+                <Can permission="orders.manage">
+                  {!isEditingFulfillment && !isTerminal && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setIsEditingFulfillment(true)}
+                      className="text-xs gap-1"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                      <span>Edit Tracking</span>
+                    </Button>
+                  )}
+                </Can>
+              </div>
+
+              {isEditingFulfillment ? (
+                <form onSubmit={handleUpdateFulfillment} className="pt-3 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-lumera-text block mb-1">
+                        Courier Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editCourier}
+                        onChange={(e) => setEditCourier(e.target.value)}
+                        placeholder="e.g. Steadfast, Pathao, DHL"
+                        className="w-full text-xs px-2.5 py-1.5 border border-border rounded bg-surface-elevated text-lumera-text focus:outline-none focus:ring-1 focus:ring-lumera-primary"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-lumera-text block mb-1">
+                        Tracking Number
+                      </label>
+                      <input
+                        type="text"
+                        value={editTrackingNumber}
+                        onChange={(e) => setEditTrackingNumber(e.target.value)}
+                        placeholder="e.g. ST-12345678"
+                        className="w-full text-xs px-2.5 py-1.5 border border-border rounded bg-surface-elevated text-lumera-text focus:outline-none focus:ring-1 focus:ring-lumera-primary"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-lumera-text block mb-1">
+                      Tracking URL (Optional)
+                    </label>
+                    <input
+                      type="url"
+                      value={editTrackingUrl}
+                      onChange={(e) => setEditTrackingUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full text-xs px-2.5 py-1.5 border border-border rounded bg-surface-elevated text-lumera-text focus:outline-none focus:ring-1 focus:ring-lumera-primary"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Button type="submit" variant="primary" size="sm" disabled={actionLoading}>
+                      Save Tracking
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setIsEditingFulfillment(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <div className="pt-3 space-y-2 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-lumera-text-muted block text-[11px]">Courier</span>
+                      <span className="font-medium text-lumera-text text-sm">
+                        {order.courier || "Not assigned"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-lumera-text-muted block text-[11px]">Tracking Number</span>
+                      <span className="font-mono text-lumera-text text-sm">
+                        {order.tracking_number || "Not assigned"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {order.tracking_url && (
+                    <div className="pt-1">
+                      <a
+                        href={order.tracking_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-lumera-primary hover:underline"
+                      >
+                        <span>Open Courier Tracking Portal</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-4 text-[11px] text-lumera-text-muted pt-2 border-t border-border">
+                    {order.shipped_at && (
+                      <span>Shipped: {new Date(order.shipped_at).toLocaleString("en-US")}</span>
+                    )}
+                    {order.delivered_at && (
+                      <span className="text-emerald-700 font-medium">
+                        Delivered: {new Date(order.delivered_at).toLocaleString("en-US")}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </Card>
+
+            {/* Line Items Snapshot */}
             <Card className="p-5 bg-card border-border">
               <h2 className="text-sm font-semibold text-lumera-text mb-4 flex items-center gap-2">
                 <Package className="h-4 w-4 text-lumera-primary" />
@@ -184,25 +509,32 @@ export default function AdminOrderDetailPage() {
               </div>
             </Card>
 
-            {/* Lifecycle Status History */}
+            {/* Lifecycle Status History Audit Log */}
             <Card className="p-5 bg-card border-border">
               <h2 className="text-sm font-semibold text-lumera-text mb-3 flex items-center gap-2">
                 <History className="h-4 w-4 text-lumera-primary" />
-                <span>Fulfillment Status History</span>
+                <span>Authoritative Audit Status History</span>
               </h2>
               <div className="space-y-3">
                 {order.status_history.map((hist, idx) => (
-                  <div key={idx} className="flex items-start gap-3 text-xs">
+                  <div key={idx} className="flex items-start gap-3 text-xs border-b border-border/40 pb-2.5 last:border-0 last:pb-0">
                     <Clock className="h-3.5 w-3.5 text-lumera-text-muted mt-0.5" />
-                    <div>
-                      <span className="font-medium text-lumera-text">
-                        {hist.from_status ? `${hist.from_status} → ` : ""}
-                        {hist.to_status}
-                      </span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-lumera-text">
+                          {hist.from_status ? `${hist.from_status} → ` : ""}
+                          <span className="capitalize">{hist.to_status}</span>
+                        </span>
+                        {hist.actor_type && (
+                          <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-surface-muted text-lumera-text-muted">
+                            {hist.actor_type}
+                          </span>
+                        )}
+                      </div>
                       {hist.reason && (
-                        <p className="text-[11px] text-lumera-text-muted">{hist.reason}</p>
+                        <p className="text-[11px] text-lumera-text-muted mt-0.5">{hist.reason}</p>
                       )}
-                      <span className="text-[10px] text-lumera-text-muted block">
+                      <span className="text-[10px] text-lumera-text-muted block mt-0.5 font-mono">
                         {new Date(hist.created_at).toLocaleString("en-US")}
                       </span>
                     </div>
@@ -218,106 +550,52 @@ export default function AdminOrderDetailPage() {
                   <CreditCard className="h-4 w-4 text-lumera-primary" />
                   <span>Payment Settlement</span>
                 </h2>
-                <span
-                  className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
-                    order.payment_status === "paid"
-                      ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                      : order.payment_status === "failed"
-                      ? "bg-rose-50 text-rose-800 border border-rose-200"
-                      : "bg-amber-50 text-amber-800 border border-amber-200"
-                  }`}
-                >
+                <Badge variant={isPaid ? "primary" : "muted"}>
                   {order.payment_status.toUpperCase()}
-                </span>
+                </Badge>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 py-3 text-xs border-b border-border">
-                <div>
-                  <span className="text-lumera-text-muted block text-[11px]">Authoritative Amount:</span>
-                  <span className="font-mono font-semibold text-lumera-text">
-                    ${order.total} {order.currency}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-lumera-text-muted block text-[11px]">Payment Gateway:</span>
-                  <span className="font-medium text-lumera-text uppercase">
-                    {order.payment?.gateway || "SSLCOMMERZ"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-lumera-text-muted block text-[11px]">Payment Method:</span>
-                  <span className="text-lumera-text">
-                    {order.payment?.method || "—"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-lumera-text-muted block text-[11px]">Provider Txn ID:</span>
-                  <span className="font-mono text-lumera-text truncate block">
-                    {order.payment?.provider_transaction_id || "—"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-lumera-text-muted block text-[11px]">Provider Reference:</span>
-                  <span className="font-mono text-lumera-text truncate block">
-                    {order.payment?.provider_reference || "—"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-lumera-text-muted block text-[11px]">Verified Paid At:</span>
-                  <span className="text-lumera-text block">
-                    {order.payment?.paid_at
-                      ? new Date(order.payment.paid_at).toLocaleString("en-US")
-                      : "—"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Payment Attempts History */}
-              {order.payment_attempts && order.payment_attempts.length > 0 && (
-                <div className="pt-3">
-                  <h3 className="text-xs font-semibold text-lumera-text mb-2">
-                    Payment Gateway Attempts ({order.payment_attempts.length})
-                  </h3>
-                  <div className="space-y-2">
-                    {order.payment_attempts.map((att) => (
-                      <div
-                        key={att.public_id}
-                        className="p-2.5 rounded bg-surface-muted/50 border border-border/50 text-xs space-y-1"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-lumera-text">
-                            Attempt #{att.attempt_number} &bull; {att.gateway.toUpperCase()}
-                          </span>
-                          <span
-                            className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                              att.status === "successful"
-                                ? "bg-emerald-100 text-emerald-800"
-                                : att.status === "failed"
-                                ? "bg-rose-100 text-rose-800"
-                                : "bg-sky-100 text-sky-800"
-                            }`}
-                          >
-                            {att.status.toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-[11px] text-lumera-text-muted">
-                          <span className="font-mono">${att.amount} {att.currency}</span>
-                          <span>{new Date(att.created_at).toLocaleString("en-US")}</span>
-                        </div>
-                        {att.provider_transaction_id && (
-                          <p className="text-[10px] font-mono text-lumera-text-muted">
-                            Txn: {att.provider_transaction_id}
-                          </p>
-                        )}
-                        {att.error_message && (
-                          <p className="text-[10px] text-rose-600 font-medium">
-                            Error: {att.error_message}
-                          </p>
-                        )}
-                      </div>
-                    ))}
+              {order.payment ? (
+                <div className="pt-3 space-y-3 text-xs">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-surface-muted/50 p-3 rounded-lg">
+                    <div>
+                      <span className="text-lumera-text-muted block text-[11px]">Gateway</span>
+                      <span className="font-semibold text-lumera-text uppercase">
+                        {order.payment.gateway}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-lumera-text-muted block text-[11px]">Method</span>
+                      <span className="font-medium text-lumera-text">
+                        {order.payment.method || "N/A"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-lumera-text-muted block text-[11px]">Amount</span>
+                      <span className="font-mono font-semibold text-lumera-text">
+                        ${order.payment.amount} {order.payment.currency}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-lumera-text-muted block text-[11px]">Settled At</span>
+                      <span className="text-lumera-text">
+                        {order.payment.paid_at
+                          ? new Date(order.payment.paid_at).toLocaleString("en-US")
+                          : "Unsettled"}
+                      </span>
+                    </div>
                   </div>
+
+                  {order.payment.provider_transaction_id && (
+                    <div className="text-[11px] font-mono text-lumera-text-muted bg-surface-elevated p-2 rounded border border-border">
+                      Gateway Txn ID: {order.payment.provider_transaction_id}
+                    </div>
+                  )}
                 </div>
+              ) : (
+                <p className="pt-3 text-xs text-lumera-text-muted">
+                  No payment record has been initiated for this order yet.
+                </p>
               )}
 
               {/* Integrity Warning */}
@@ -382,6 +660,101 @@ export default function AdminOrderDetailPage() {
             </Card>
           </div>
         </div>
+
+        {/* Dispatch & Shipping Modal */}
+        {showShipModal && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <h3 className="text-base font-semibold text-lumera-text flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-lumera-primary" />
+                  <span>Dispatch & Ship Order</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowShipModal(false)}
+                  className="text-lumera-text-muted hover:text-lumera-text"
+                >
+                  <XCircle className="h-5 w-5" />
+                </button>
+              </div>
+
+              <p className="text-xs text-lumera-text-muted">
+                Assign courier tracking details before handing the parcel to the carrier.
+              </p>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="font-medium text-lumera-text block mb-1">
+                    Courier Provider *
+                  </label>
+                  <input
+                    type="text"
+                    value={shipCourier}
+                    onChange={(e) => setShipCourier(e.target.value)}
+                    placeholder="e.g. Steadfast, Pathao, DHL, RedX"
+                    className="w-full px-3 py-2 border border-border rounded bg-surface-elevated text-lumera-text focus:outline-none focus:ring-1 focus:ring-lumera-primary"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="font-medium text-lumera-text block mb-1">
+                    Tracking Number / Consignment ID *
+                  </label>
+                  <input
+                    type="text"
+                    value={shipTrackingNumber}
+                    onChange={(e) => setShipTrackingNumber(e.target.value)}
+                    placeholder="e.g. ST-98765432"
+                    className="w-full px-3 py-2 border border-border rounded bg-surface-elevated text-lumera-text focus:outline-none focus:ring-1 focus:ring-lumera-primary"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="font-medium text-lumera-text block mb-1">
+                    Tracking URL (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={shipTrackingUrl}
+                    onChange={(e) => setShipTrackingUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full px-3 py-2 border border-border rounded bg-surface-elevated text-lumera-text focus:outline-none focus:ring-1 focus:ring-lumera-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowShipModal(false)}
+                  disabled={actionLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() =>
+                    handleTransition(
+                      "shipped",
+                      "Dispatched with courier",
+                      shipCourier,
+                      shipTrackingNumber,
+                      shipTrackingUrl
+                    )
+                  }
+                  disabled={actionLoading || !shipCourier.trim() || !shipTrackingNumber.trim()}
+                >
+                  {actionLoading ? "Confirming..." : "Confirm Shipment"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Can>
   );

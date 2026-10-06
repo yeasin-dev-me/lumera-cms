@@ -210,6 +210,32 @@ class AdminApiClient {
   async getOrder(publicId: string): Promise<import("@/types/orders").AdminOrderDetail> {
     return this.request<import("@/types/orders").AdminOrderDetail>(`/admin/orders/${encodeURIComponent(publicId)}/`);
   }
+
+  async transitionOrder(
+    publicId: string,
+    payload: import("@/types/orders").OrderTransitionPayload
+  ): Promise<import("@/types/orders").AdminOrderDetail> {
+    return this.request<import("@/types/orders").AdminOrderDetail>(
+      `/admin/orders/${encodeURIComponent(publicId)}/transition/`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    );
+  }
+
+  async updateOrderFulfillment(
+    publicId: string,
+    payload: import("@/types/orders").FulfillmentUpdatePayload
+  ): Promise<import("@/types/orders").AdminOrderDetail> {
+    return this.request<import("@/types/orders").AdminOrderDetail>(
+      `/admin/orders/${encodeURIComponent(publicId)}/fulfillment/`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      }
+    );
+  }
 }
 
 export const adminApi = new AdminApiClient();
