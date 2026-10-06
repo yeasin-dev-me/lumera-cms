@@ -72,8 +72,35 @@ export interface AdminOrderDetail {
   customer_notes: string;
   items: OrderItemDetail[];
   status_history: OrderStatusHistoryItem[];
+  payment?: PaymentSummary | null;
+  payment_attempts?: PaymentAttemptItem[];
   created_at: string;
   updated_at: string;
+}
+
+export interface PaymentSummary {
+  public_id: string;
+  gateway: string;
+  method: string;
+  status: string;
+  amount: string;
+  currency: string;
+  provider_transaction_id: string;
+  provider_reference: string;
+  paid_at: string | null;
+  created_at: string;
+}
+
+export interface PaymentAttemptItem {
+  public_id: string;
+  attempt_number: number;
+  gateway: string;
+  status: string;
+  amount: string;
+  currency: string;
+  provider_transaction_id?: string;
+  error_message?: string;
+  created_at: string;
 }
 
 export interface PaginatedAdminOrders {

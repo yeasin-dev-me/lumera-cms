@@ -20,6 +20,9 @@ import {
   Clock,
   History,
   ShieldCheck,
+  CreditCard,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 
 export default function AdminOrderDetailPage() {
@@ -205,6 +208,124 @@ export default function AdminOrderDetailPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </Card>
+
+            {/* Operational Payment & Gateway Settlement Card */}
+            <Card className="p-5 bg-card border-border">
+              <div className="flex items-center justify-between pb-3 border-b border-border">
+                <h2 className="text-sm font-semibold text-lumera-text flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-lumera-primary" />
+                  <span>Payment Settlement</span>
+                </h2>
+                <span
+                  className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
+                    order.payment_status === "paid"
+                      ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                      : order.payment_status === "failed"
+                      ? "bg-rose-50 text-rose-800 border border-rose-200"
+                      : "bg-amber-50 text-amber-800 border border-amber-200"
+                  }`}
+                >
+                  {order.payment_status.toUpperCase()}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 py-3 text-xs border-b border-border">
+                <div>
+                  <span className="text-lumera-text-muted block text-[11px]">Authoritative Amount:</span>
+                  <span className="font-mono font-semibold text-lumera-text">
+                    ${order.total} {order.currency}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-lumera-text-muted block text-[11px]">Payment Gateway:</span>
+                  <span className="font-medium text-lumera-text uppercase">
+                    {order.payment?.gateway || "SSLCOMMERZ"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-lumera-text-muted block text-[11px]">Payment Method:</span>
+                  <span className="text-lumera-text">
+                    {order.payment?.method || "—"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-lumera-text-muted block text-[11px]">Provider Txn ID:</span>
+                  <span className="font-mono text-lumera-text truncate block">
+                    {order.payment?.provider_transaction_id || "—"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-lumera-text-muted block text-[11px]">Provider Reference:</span>
+                  <span className="font-mono text-lumera-text truncate block">
+                    {order.payment?.provider_reference || "—"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-lumera-text-muted block text-[11px]">Verified Paid At:</span>
+                  <span className="text-lumera-text block">
+                    {order.payment?.paid_at
+                      ? new Date(order.payment.paid_at).toLocaleString("en-US")
+                      : "—"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Payment Attempts History */}
+              {order.payment_attempts && order.payment_attempts.length > 0 && (
+                <div className="pt-3">
+                  <h3 className="text-xs font-semibold text-lumera-text mb-2">
+                    Payment Gateway Attempts ({order.payment_attempts.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {order.payment_attempts.map((att) => (
+                      <div
+                        key={att.public_id}
+                        className="p-2.5 rounded bg-surface-muted/50 border border-border/50 text-xs space-y-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-lumera-text">
+                            Attempt #{att.attempt_number} &bull; {att.gateway.toUpperCase()}
+                          </span>
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                              att.status === "successful"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : att.status === "failed"
+                                ? "bg-rose-100 text-rose-800"
+                                : "bg-sky-100 text-sky-800"
+                            }`}
+                          >
+                            {att.status.toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-lumera-text-muted">
+                          <span className="font-mono">${att.amount} {att.currency}</span>
+                          <span>{new Date(att.created_at).toLocaleString("en-US")}</span>
+                        </div>
+                        {att.provider_transaction_id && (
+                          <p className="text-[10px] font-mono text-lumera-text-muted">
+                            Txn: {att.provider_transaction_id}
+                          </p>
+                        )}
+                        {att.error_message && (
+                          <p className="text-[10px] text-rose-600 font-medium">
+                            Error: {att.error_message}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Integrity Warning */}
+              <div className="mt-3 p-2 bg-amber-50/60 border border-amber-200/50 rounded text-[11px] text-amber-900 flex items-start gap-2">
+                <ShieldCheck className="h-3.5 w-3.5 text-amber-600 mt-0.5 shrink-0" />
+                <span>
+                  Payment state is authoritative and verified server-to-server with the payment gateway. Manual overrides are restricted by system architecture (ADR-0014).
+                </span>
               </div>
             </Card>
           </div>
