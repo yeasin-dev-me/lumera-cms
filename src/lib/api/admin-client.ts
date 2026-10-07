@@ -267,6 +267,90 @@ class AdminApiClient {
   async getRefunds(): Promise<import("@/types/orders").PaginatedAdminRefunds> {
     return this.request<import("@/types/orders").PaginatedAdminRefunds>("/admin/refunds/");
   }
+
+  // Content Management (Step 10, ADR-0017)
+  async getContentBlocks(params?: {
+    status?: string;
+    content_type?: string;
+    search?: string;
+  }): Promise<import("@/types/content").ContentBlock[]> {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.content_type) searchParams.set("content_type", params.content_type);
+    if (params?.search) searchParams.set("search", params.search);
+    const query = searchParams.toString();
+    return this.request<import("@/types/content").ContentBlock[]>(
+      query ? `/admin/content/?${query}` : "/admin/content/"
+    );
+  }
+
+  async getContentBlock(publicId: string): Promise<import("@/types/content").ContentBlock> {
+    return this.request<import("@/types/content").ContentBlock>(
+      `/admin/content/${encodeURIComponent(publicId)}/`
+    );
+  }
+
+  async createContentBlock(
+    payload: import("@/types/content").ContentBlockInput
+  ): Promise<import("@/types/content").ContentBlock> {
+    return this.request<import("@/types/content").ContentBlock>("/admin/content/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateContentBlock(
+    publicId: string,
+    payload: Partial<import("@/types/content").ContentBlockInput>
+  ): Promise<import("@/types/content").ContentBlock> {
+    return this.request<import("@/types/content").ContentBlock>(
+      `/admin/content/${encodeURIComponent(publicId)}/`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      }
+    );
+  }
+
+  async deleteContentBlock(publicId: string): Promise<void> {
+    return this.request<void>(`/admin/content/${encodeURIComponent(publicId)}/`, {
+      method: "DELETE",
+    });
+  }
+
+  async publishContentBlock(publicId: string): Promise<import("@/types/content").ContentBlock> {
+    return this.request<import("@/types/content").ContentBlock>(
+      `/admin/content/${encodeURIComponent(publicId)}/publish/`,
+      { method: "POST" }
+    );
+  }
+
+  async unpublishContentBlock(publicId: string): Promise<import("@/types/content").ContentBlock> {
+    return this.request<import("@/types/content").ContentBlock>(
+      `/admin/content/${encodeURIComponent(publicId)}/unpublish/`,
+      { method: "POST" }
+    );
+  }
+
+  async archiveContentBlock(publicId: string): Promise<import("@/types/content").ContentBlock> {
+    return this.request<import("@/types/content").ContentBlock>(
+      `/admin/content/${encodeURIComponent(publicId)}/archive/`,
+      { method: "POST" }
+    );
+  }
+
+  async getCampaigns(): Promise<import("@/types/content").Campaign[]> {
+    return this.request<import("@/types/content").Campaign[]>("/admin/campaigns/");
+  }
+
+  async createCampaign(
+    payload: import("@/types/content").CampaignInput
+  ): Promise<import("@/types/content").Campaign> {
+    return this.request<import("@/types/content").Campaign>("/admin/campaigns/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
 }
 
 export const adminApi = new AdminApiClient();
