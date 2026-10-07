@@ -25,6 +25,7 @@ export default function CMSDashboardPage() {
   const [healthStatus, setHealthStatus] = useState<string>("Checking...");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [report, setReport] = useState<import("@/types/orders").AdminOrderReport | null>(null);
 
   const checkHealth = async () => {
     setLoading(true);
@@ -32,6 +33,12 @@ export default function CMSDashboardPage() {
     try {
       const res = await adminApi.getHealth();
       setHealthStatus(res.status);
+      try {
+        setReport(await adminApi.getOrderReport());
+      } catch {
+        // Health remains useful when reporting permission is not assigned.
+        setReport(null);
+      }
     } catch (err: unknown) {
       if (err instanceof AdminApiError) {
         setError(`API connection error (${err.code}): ${err.message}`);
@@ -95,7 +102,7 @@ export default function CMSDashboardPage() {
             <span className="text-[11px] font-medium text-lumera-text-muted block">
               Total Orders
             </span>
-            <span className="text-2xl font-bold text-lumera-text">0</span>
+            <span className="text-2xl font-bold text-lumera-text">{report?.orders_count ?? "—"}</span>
             <span className="text-[10px] text-lumera-text-muted block mt-1">
               Awaiting first customer orders
             </span>
@@ -110,7 +117,7 @@ export default function CMSDashboardPage() {
             <span className="text-[11px] font-medium text-lumera-text-muted block">
               Pending Fulfillment
             </span>
-            <span className="text-2xl font-bold text-lumera-text">0</span>
+            <span className="text-2xl font-bold text-lumera-text">{report ? report.orders_count - report.paid_orders_count : "—"}</span>
             <span className="text-[10px] text-lumera-text-muted block mt-1">
               Fulfillment queue empty
             </span>
@@ -140,7 +147,9 @@ export default function CMSDashboardPage() {
             <span className="text-[11px] font-medium text-lumera-text-muted block">
               Verified Revenue
             </span>
-            <span className="text-2xl font-bold text-lumera-text">$0.00</span>
+            <span className="text-2xl font-bold text-lumera-text">
+              {report ? `${report.currency} ${report.gross_sales}` : "—"}
+            </span>
             <span className="text-[10px] text-lumera-text-muted block mt-1">
               Calculated via backend services
             </span>

@@ -50,6 +50,12 @@ export const Sidebar: React.FC = () => {
           permission: "orders.read",
         },
         {
+          label: "Returns",
+          href: "/returns",
+          icon: <ShoppingBag className="h-4 w-4" />,
+          permission: "orders.read",
+        },
+        {
           label: "Customers",
           href: "/customers",
           icon: <Users className="h-4 w-4" />,

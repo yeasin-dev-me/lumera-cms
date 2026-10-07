@@ -136,3 +136,46 @@ export interface AdminOrderListParams {
   payment_status?: string;
   search?: string;
 }
+
+export interface AdminOrderReport {
+  orders_count: number;
+  paid_orders_count: number;
+  gross_sales: string;
+  refunded_total: string;
+  currency: string;
+}
+
+export interface AdminReturnRequest {
+  public_id: string;
+  order_public_id: string;
+  reason: string;
+  status: "requested" | "approved" | "rejected" | "received" | "cancelled";
+  staff_note: string;
+  items: { order_item_id: string; product_name: string; quantity: number }[];
+  created_at: string;
+}
+
+export interface PaginatedAdminReturns {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: AdminReturnRequest[];
+}
+
+export interface AdminRefund {
+  public_id: string;
+  payment_public_id: string;
+  order_public_id: string;
+  amount: string;
+  currency: string;
+  status: "pending" | "succeeded" | "failed";
+  reason: string;
+  created_at: string;
+}
+
+export interface PaginatedAdminRefunds {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: AdminRefund[];
+}

@@ -236,7 +236,37 @@ class AdminApiClient {
       }
     );
   }
+
+  async getOrderReport(params?: { from?: string; to?: string; currency?: string }): Promise<import("@/types/orders").AdminOrderReport> {
+    const searchParams = new URLSearchParams();
+    if (params?.from) searchParams.set("from", params.from);
+    if (params?.to) searchParams.set("to", params.to);
+    if (params?.currency) searchParams.set("currency", params.currency);
+    const query = searchParams.toString();
+    return this.request<import("@/types/orders").AdminOrderReport>(
+      query ? `/admin/reports/orders/?${query}` : "/admin/reports/orders/"
+    );
+  }
+
+  async getReturns(params?: { status?: string }): Promise<import("@/types/orders").PaginatedAdminReturns> {
+    const query = params?.status ? `?status=${encodeURIComponent(params.status)}` : "";
+    return this.request<import("@/types/orders").PaginatedAdminReturns>(`/admin/returns/${query}`);
+  }
+
+  async transitionReturn(
+    publicId: string,
+    action: "approve" | "reject" | "receive",
+    staff_note = ""
+  ): Promise<import("@/types/orders").AdminReturnRequest> {
+    return this.request<import("@/types/orders").AdminReturnRequest>(
+      `/admin/returns/${encodeURIComponent(publicId)}/${action}/`,
+      { method: "POST", body: JSON.stringify({ staff_note }) }
+    );
+  }
+
+  async getRefunds(): Promise<import("@/types/orders").PaginatedAdminRefunds> {
+    return this.request<import("@/types/orders").PaginatedAdminRefunds>("/admin/refunds/");
+  }
 }
 
 export const adminApi = new AdminApiClient();
-
