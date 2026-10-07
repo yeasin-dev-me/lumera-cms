@@ -351,6 +351,37 @@ class AdminApiClient {
       body: JSON.stringify(payload),
     });
   }
+
+  async getNotifications(
+    filters?: import("@/types/notifications").NotificationFilters
+  ): Promise<import("@/types/notifications").PaginatedAdminNotifications> {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append("status", filters.status);
+    if (filters?.event_type) params.append("event_type", filters.event_type);
+    if (filters?.recipient) params.append("recipient", filters.recipient);
+    if (filters?.page) params.append("page", String(filters.page));
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    return this.request<import("@/types/notifications").PaginatedAdminNotifications>(
+      `/admin/notifications/${qs}`
+    );
+  }
+
+  async getNotification(
+    publicId: string
+  ): Promise<import("@/types/notifications").AdminNotification> {
+    return this.request<import("@/types/notifications").AdminNotification>(
+      `/admin/notifications/${encodeURIComponent(publicId)}/`
+    );
+  }
+
+  async resendNotification(
+    publicId: string
+  ): Promise<import("@/types/notifications").AdminNotification> {
+    return this.request<import("@/types/notifications").AdminNotification>(
+      `/admin/notifications/${encodeURIComponent(publicId)}/resend/`,
+      { method: "POST" }
+    );
+  }
 }
 
 export const adminApi = new AdminApiClient();

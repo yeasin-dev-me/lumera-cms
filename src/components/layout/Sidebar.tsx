@@ -16,6 +16,7 @@ import {
   Shield,
   Sliders,
   History,
+  Mail,
 } from "lucide-react";
 import { usePermissions } from "@/lib/auth/permissions";
 
@@ -60,6 +61,12 @@ export const Sidebar: React.FC = () => {
           href: "/customers",
           icon: <Users className="h-4 w-4" />,
           permission: "customers.read",
+        },
+        {
+          label: "Notifications",
+          href: "/notifications",
+          icon: <Mail className="h-4 w-4" />,
+          permission: "notifications.read",
         },
       ],
     },
