@@ -67,7 +67,7 @@ export default function CMSDashboardPage() {
             <Badge variant="primary">TASK-002 Active</Badge>
           </div>
           <p className="text-xs text-lumera-text-muted">
-            Lumera operational control center. Headless Django API backend.
+            Penguin Mart operational control center. Headless Django API backend.
           </p>
         </div>
 
@@ -178,7 +178,7 @@ export default function CMSDashboardPage() {
 
           <div className="space-y-3 text-xs text-lumera-text-muted">
             <p>
-              The Custom Next.js CMS acts as the operational control center for Lumera.
+              The Custom Next.js CMS acts as the operational control center for Penguin Mart.
               Per architectural governance (ADR-0007), Django Admin is explicitly excluded,
               and all operations are routed through the documented <code>/api/v1/admin/</code> API.
             </p>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { useCMSAuth } from "@/lib/auth/auth-context";
 import { Lock, Mail, ShieldAlert } from "lucide-react";
 
@@ -26,12 +27,18 @@ export function StaffLoginForm() {
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex h-12 w-12 rounded-xl bg-lumera-primary text-white items-center justify-center font-serif text-2xl font-bold mb-4 shadow-lg shadow-lumera-primary/20">
-            L
+        <div className="text-center mb-8 flex flex-col items-center">
+          <div className="relative h-16 w-16 rounded-full overflow-hidden mb-4 shadow-xl ring-2 ring-lumera-primary/40">
+            <Image
+              src="/penguin-mart-logo.jpg"
+              alt="Penguin Mart Logo"
+              fill
+              className="object-cover"
+              priority
+            />
           </div>
           <h1 className="font-serif text-2xl font-bold tracking-wide text-white">
-            Lumera Operations CMS
+            Penguin Mart Operations CMS
           </h1>
           <p className="text-xs text-slate-400 mt-2">
             Restricted Staff Access — Authoritative Backend RBAC Enforced
